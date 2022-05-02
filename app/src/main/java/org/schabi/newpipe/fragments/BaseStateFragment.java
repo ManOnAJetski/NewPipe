@@ -1,5 +1,7 @@
 package org.schabi.newpipe.fragments;
 
+import static org.schabi.newpipe.ktx.ViewUtils.animate;
+
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -19,8 +21,6 @@ import org.schabi.newpipe.util.InfoCache;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import icepick.State;
-
-import static org.schabi.newpipe.ktx.ViewUtils.animate;
 
 public abstract class BaseStateFragment<I> extends BaseFragment implements ViewContract<I> {
     @State
