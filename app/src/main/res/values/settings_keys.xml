@@ -29,6 +29,7 @@
     <string name="screen_brightness_key">screen_brightness_key</string>
     <string name="screen_brightness_timestamp_key">screen_brightness_timestamp_key</string>
     <string name="clear_queue_confirmation_key">clear_queue_confirmation_key</string>
+    <string name="ignore_hardware_media_buttons_key">ignore_hardware_media_buttons_key</string>
     <string name="fully_load_playlist_key">fully_load_playlist_key</string>
 
     <string name="popup_saved_width_key">popup_saved_width</string>

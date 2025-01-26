@@ -2,7 +2,6 @@ package org.schabi.newpipe.error;
 
 import static org.schabi.newpipe.util.Localization.assureCorrectAppLanguage;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -13,24 +12,24 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.IntentCompat;
 
 import com.grack.nanojson.JsonWriter;
 
 import org.schabi.newpipe.BuildConfig;
-import org.schabi.newpipe.MainActivity;
 import org.schabi.newpipe.R;
 import org.schabi.newpipe.databinding.ActivityErrorBinding;
 import org.schabi.newpipe.util.Localization;
 import org.schabi.newpipe.util.ThemeHelper;
 import org.schabi.newpipe.util.external_communication.ShareUtils;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /*
  * Created by Christian Schabesberger on 24.10.15.
@@ -65,12 +64,8 @@ public class ErrorActivity extends AppCompatActivity {
     public static final String ERROR_EMAIL_ADDRESS = "crashreport@newpipe.schabi.org";
     public static final String ERROR_EMAIL_SUBJECT = "Exception in ";
 
-    public static final String ERROR_GITHUB_ISSUE_URL
-            = "https://github.com/TeamNewPipe/NewPipe/issues";
-
-    public static final DateTimeFormatter CURRENT_TIMESTAMP_FORMATTER
-            = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
+    public static final String ERROR_GITHUB_ISSUE_URL =
+            "https://github.com/TeamNewPipe/NewPipe/issues";
 
     private ErrorInfo errorInfo;
     private String currentTimeStamp;
@@ -104,11 +99,13 @@ public class ErrorActivity extends AppCompatActivity {
             actionBar.setDisplayShowTitleEnabled(true);
         }
 
-        errorInfo = intent.getParcelableExtra(ERROR_INFO);
+        errorInfo = IntentCompat.getParcelableExtra(intent, ERROR_INFO, ErrorInfo.class);
 
         // important add guru meditation
         addGuruMeditation();
-        currentTimeStamp = CURRENT_TIMESTAMP_FORMATTER.format(LocalDateTime.now());
+        // print current time, as zoned ISO8601 timestamp
+        final ZonedDateTime now = ZonedDateTime.now();
+        currentTimeStamp = now.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
         activityErrorBinding.errorReportEmailButton.setOnClickListener(v ->
                 openPrivacyPolicyDialog(this, "EMAIL"));
@@ -159,7 +156,7 @@ public class ErrorActivity extends AppCompatActivity {
                 .setMessage(R.string.start_accept_privacy_policy)
                 .setCancelable(false)
                 .setNeutralButton(R.string.read_privacy_policy, (dialog, which) ->
-                        ShareUtils.openUrlInBrowser(context,
+                        ShareUtils.openUrlInApp(context,
                                 context.getString(R.string.privacy_policy_url)))
                 .setPositiveButton(R.string.accept, (dialog, which) -> {
                     if (action.equals("EMAIL")) { // send on email
@@ -170,45 +167,19 @@ public class ErrorActivity extends AppCompatActivity {
                                         + getString(R.string.app_name) + " "
                                         + BuildConfig.VERSION_NAME)
                                 .putExtra(Intent.EXTRA_TEXT, buildJson());
-                        ShareUtils.openIntentInApp(context, i, true);
+                        ShareUtils.openIntentInApp(context, i);
                     } else if (action.equals("GITHUB")) { // open the NewPipe issue page on GitHub
-                        ShareUtils.openUrlInBrowser(this, ERROR_GITHUB_ISSUE_URL, false);
+                        ShareUtils.openUrlInApp(this, ERROR_GITHUB_ISSUE_URL);
                     }
                 })
-                .setNegativeButton(R.string.decline, (dialog, which) -> {
-                    // do nothing
-                })
+                .setNegativeButton(R.string.decline, null)
                 .show();
     }
 
     private String formErrorText(final String[] el) {
-        final StringBuilder text = new StringBuilder();
-        if (el != null) {
-            for (final String e : el) {
-                text.append("-------------------------------------\n").append(e);
-            }
-        }
-        text.append("-------------------------------------");
-        return text.toString();
-    }
-
-    /**
-     * Get the checked activity.
-     *
-     * @param returnActivity the activity to return to
-     * @return the casted return activity or null
-     */
-    @Nullable
-    static Class<? extends Activity> getReturnActivity(final Class<?> returnActivity) {
-        Class<? extends Activity> checkedReturnActivity = null;
-        if (returnActivity != null) {
-            if (Activity.class.isAssignableFrom(returnActivity)) {
-                checkedReturnActivity = returnActivity.asSubclass(Activity.class);
-            } else {
-                checkedReturnActivity = MainActivity.class;
-            }
-        }
-        return checkedReturnActivity;
+        final String separator = "-------------------------------------";
+        return Arrays.stream(el)
+                .collect(Collectors.joining(separator + "\n", separator + "\n", separator));
     }
 
     private void buildInfo(final ErrorInfo info) {
@@ -276,6 +247,9 @@ public class ErrorActivity extends AppCompatActivity {
                     .append("\n* __Content Country:__ ").append(getContentCountryString())
                     .append("\n* __Content Language:__ ").append(getContentLanguageString())
                     .append("\n* __App Language:__ ").append(getAppLanguage())
+                    .append("\n* __Service:__ ").append(errorInfo.getServiceName())
+                    .append("\n* __Timestamp:__ ").append(currentTimeStamp)
+                    .append("\n* __Package:__ ").append(getPackageName())
                     .append("\n* __Service:__ ").append(errorInfo.getServiceName())
                     .append("\n* __Version:__ ").append(BuildConfig.VERSION_NAME)
                     .append("\n* __OS:__ ").append(getOsString()).append("\n");

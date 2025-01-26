@@ -1,8 +1,18 @@
-- Mostrar "Recuento de suscriptores no disponible" en esos casos
-- Corregir NPE cuando una lista de reproducción de YouTube está vacía
-- Corrección rápida de los quioscos en SoundCloud
-- Refactorización y corrección de errores #1623 
-  - Arreglar el resultado cíclico de la búsqueda #1562
-  - Corrección de la barra de búsqueda no estática
-  - Fix YT Premium video no se bloquean correctamente
-  - Corregir los vídeos que a veces no se cargan (debido al análisis sintáctico de DASH)
+# cambios de la v0.14.1
+
+### Arreglado
+- Arreglado el fallo de descifrar la url del vídeo #1659 
+- Corregido el enlace de descripción que no se extrae bien #1657
+
+# cambios de la v0.14.0
+
+### Nuevo
+- Nuevo diseño del drawer #1461
+- Nueva página frontal personalizable #1461
+
+### Mejoras
+- Mejora de los controles gestuales #1604 
+- Nueva forma de cerrar el reproductor emergente #1597
+
+### Corregido
+- Corregido el error cuando el recuento de suscripciones no está disponible. Cierra #1649.

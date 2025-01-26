@@ -11,7 +11,6 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.SeekBar;
@@ -21,25 +20,25 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.math.MathUtils;
 import androidx.fragment.app.DialogFragment;
 import androidx.preference.PreferenceManager;
 
+import com.evernote.android.state.State;
+import com.livefront.bridge.Bridge;
+
 import org.schabi.newpipe.R;
 import org.schabi.newpipe.databinding.DialogPlaybackParameterBinding;
-import org.schabi.newpipe.player.Player;
+import org.schabi.newpipe.player.ui.VideoPlayerUi;
 import org.schabi.newpipe.util.SimpleOnSeekBarChangeListener;
 import org.schabi.newpipe.util.SliderStrategy;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.DoubleFunction;
 import java.util.function.DoubleSupplier;
-
-import icepick.Icepick;
-import icepick.State;
 
 public class PlaybackParameterDialog extends DialogFragment {
     private static final String TAG = "PlaybackParameterDialog";
@@ -136,7 +135,7 @@ public class PlaybackParameterDialog extends DialogFragment {
     @Override
     public void onSaveInstanceState(@NonNull final Bundle outState) {
         super.onSaveInstanceState(outState);
-        Icepick.saveInstanceState(this, outState);
+        Bridge.saveInstanceState(this, outState);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -147,9 +146,9 @@ public class PlaybackParameterDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable final Bundle savedInstanceState) {
         assureCorrectAppLanguage(getContext());
-        Icepick.restoreInstanceState(this, savedInstanceState);
+        Bridge.restoreInstanceState(this, savedInstanceState);
 
-        binding = DialogPlaybackParameterBinding.inflate(LayoutInflater.from(getContext()));
+        binding = DialogPlaybackParameterBinding.inflate(getLayoutInflater());
         initUI();
 
         final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(requireActivity())
@@ -207,13 +206,13 @@ public class PlaybackParameterDialog extends DialogFragment {
                     ? View.VISIBLE
                     : View.GONE);
             animateRotation(binding.pitchToogleControlModes,
-                    Player.DEFAULT_CONTROLS_DURATION,
+                    VideoPlayerUi.DEFAULT_CONTROLS_DURATION,
                     isCurrentlyVisible ? 180 : 0);
         });
 
         getPitchControlModeComponentMappings()
                 .forEach(this::setupPitchControlModeTextView);
-        changePitchControlMode(isCurrentPitchControlModeSemitone());
+        // Initialization is done at the end
 
         // Pitch - Percent
         setText(binding.pitchPercentMinimumText, PlayerHelper::formatPitch, MIN_PITCH_OR_SPEED);
@@ -275,6 +274,9 @@ public class PlaybackParameterDialog extends DialogFragment {
             skipSilence = isChecked;
             updateCallback();
         });
+
+        // PitchControlMode has to be initialized at the end because it requires the unhookCheckbox
+        changePitchControlMode(isCurrentPitchControlModeSemitone());
     }
 
     // -- General formatting --
@@ -331,10 +333,8 @@ public class PlaybackParameterDialog extends DialogFragment {
     }
 
     private Map<Boolean, TextView> getPitchControlModeComponentMappings() {
-        final Map<Boolean, TextView> mappings = new HashMap<>();
-        mappings.put(PITCH_CTRL_MODE_PERCENT, binding.pitchControlModePercent);
-        mappings.put(PITCH_CTRL_MODE_SEMITONE, binding.pitchControlModeSemitone);
-        return mappings;
+        return Map.of(PITCH_CTRL_MODE_PERCENT, binding.pitchControlModePercent,
+                PITCH_CTRL_MODE_SEMITONE, binding.pitchControlModeSemitone);
     }
 
     private void changePitchControlMode(final boolean semitones) {
@@ -342,14 +342,14 @@ public class PlaybackParameterDialog extends DialogFragment {
         final Map<Boolean, TextView> pitchCtrlModeComponentMapping =
                 getPitchControlModeComponentMappings();
         pitchCtrlModeComponentMapping.forEach((v, textView) -> textView.setBackground(
-                resolveDrawable(requireContext(), R.attr.selectableItemBackground)));
+                resolveDrawable(requireContext(), android.R.attr.selectableItemBackground)));
 
         // Mark the selected textview
         final TextView textView = pitchCtrlModeComponentMapping.get(semitones);
         if (textView != null) {
             textView.setBackground(new LayerDrawable(new Drawable[]{
                     resolveDrawable(requireContext(), R.attr.dashed_border),
-                    resolveDrawable(requireContext(), R.attr.selectableItemBackground)
+                    resolveDrawable(requireContext(), android.R.attr.selectableItemBackground)
             }));
         }
 
@@ -404,27 +404,25 @@ public class PlaybackParameterDialog extends DialogFragment {
     }
 
     private Map<Double, TextView> getStepSizeComponentMappings() {
-        final Map<Double, TextView> mappings = new HashMap<>();
-        mappings.put(STEP_1_PERCENT_VALUE, binding.stepSizeOnePercent);
-        mappings.put(STEP_5_PERCENT_VALUE, binding.stepSizeFivePercent);
-        mappings.put(STEP_10_PERCENT_VALUE, binding.stepSizeTenPercent);
-        mappings.put(STEP_25_PERCENT_VALUE, binding.stepSizeTwentyFivePercent);
-        mappings.put(STEP_100_PERCENT_VALUE, binding.stepSizeOneHundredPercent);
-        return mappings;
+        return Map.of(STEP_1_PERCENT_VALUE, binding.stepSizeOnePercent,
+                STEP_5_PERCENT_VALUE, binding.stepSizeFivePercent,
+                STEP_10_PERCENT_VALUE, binding.stepSizeTenPercent,
+                STEP_25_PERCENT_VALUE, binding.stepSizeTwentyFivePercent,
+                STEP_100_PERCENT_VALUE, binding.stepSizeOneHundredPercent);
     }
 
     private void setStepSizeToUI(final double newStepSize) {
         // Bring all textviews into a normal state
         final Map<Double, TextView> stepSiteComponentMapping = getStepSizeComponentMappings();
         stepSiteComponentMapping.forEach((v, textView) -> textView.setBackground(
-                resolveDrawable(requireContext(), R.attr.selectableItemBackground)));
+                resolveDrawable(requireContext(), android.R.attr.selectableItemBackground)));
 
         // Mark the selected textview
         final TextView textView = stepSiteComponentMapping.get(newStepSize);
         if (textView != null) {
             textView.setBackground(new LayerDrawable(new Drawable[]{
                     resolveDrawable(requireContext(), R.attr.dashed_border),
-                    resolveDrawable(requireContext(), R.attr.selectableItemBackground)
+                    resolveDrawable(requireContext(), android.R.attr.selectableItemBackground)
             }));
         }
 
@@ -529,7 +527,7 @@ public class PlaybackParameterDialog extends DialogFragment {
     }
 
     private void setAndUpdateTempo(final double newTempo) {
-        this.tempo = calcValidTempo(newTempo);
+        this.tempo = MathUtils.clamp(newTempo, MIN_PITCH_OR_SPEED, MAX_PITCH_OR_SPEED);
 
         binding.tempoSeekbar.setProgress(QUADRATIC_STRATEGY.progressOf(tempo));
         setText(binding.tempoCurrentText, PlayerHelper::formatSpeed, tempo);
@@ -548,13 +546,8 @@ public class PlaybackParameterDialog extends DialogFragment {
                 pitchPercent);
     }
 
-    private double calcValidTempo(final double newTempo) {
-        return Math.max(MIN_PITCH_OR_SPEED, Math.min(MAX_PITCH_OR_SPEED, newTempo));
-    }
-
     private double calcValidPitch(final double newPitch) {
-        final double calcPitch =
-                Math.max(MIN_PITCH_OR_SPEED, Math.min(MAX_PITCH_OR_SPEED, newPitch));
+        final double calcPitch = MathUtils.clamp(newPitch, MIN_PITCH_OR_SPEED, MAX_PITCH_OR_SPEED);
 
         if (!isCurrentPitchControlModeSemitone()) {
             return calcPitch;

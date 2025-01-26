@@ -19,7 +19,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
-import androidx.preference.PreferenceManager;
 
 import com.google.android.material.shape.CornerFamily;
 import com.google.android.material.shape.ShapeAppearanceModel;
@@ -43,6 +42,7 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import org.schabi.newpipe.fragments.list.BaseListInfoFragment;
 import org.schabi.newpipe.info_list.dialog.InfoItemDialog;
 import org.schabi.newpipe.info_list.dialog.StreamDialogDefaultEntry;
+import org.schabi.newpipe.local.dialog.PlaylistDialog;
 import org.schabi.newpipe.local.playlist.RemotePlaylistManager;
 import org.schabi.newpipe.player.MainPlayer.PlayerType;
 import org.schabi.newpipe.player.playqueue.PlayQueue;
@@ -52,6 +52,8 @@ import org.schabi.newpipe.util.Localization;
 import org.schabi.newpipe.util.NavigationHelper;
 import org.schabi.newpipe.util.PicassoHelper;
 import org.schabi.newpipe.util.external_communication.ShareUtils;
+import org.schabi.newpipe.util.image.PicassoHelper;
+import org.schabi.newpipe.util.text.TextEllipsizer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -132,6 +134,8 @@ public class PlaylistFragment extends BaseListInfoFragment<StreamInfoItem, Playl
     protected void initViews(final View rootView, final Bundle savedInstanceState) {
         super.initViews(rootView, savedInstanceState);
 
+        // Is mini variant still relevant?
+        // Only the remote playlist screen uses it now
         infoListAdapter.setUseMiniVariant(true);
     }
 
@@ -235,13 +239,24 @@ public class PlaylistFragment extends BaseListInfoFragment<StreamInfoItem, Playl
                 ShareUtils.openUrlInBrowser(requireContext(), url);
                 break;
             case R.id.menu_item_share:
-                if (currentInfo != null) {
-                    ShareUtils.shareText(requireContext(), name, url,
-                            currentInfo.getThumbnailUrl());
-                }
+                ShareUtils.shareText(requireContext(), name, url,
+                        currentInfo == null ? List.of() : currentInfo.getThumbnails());
                 break;
             case R.id.menu_item_bookmark:
                 onBookmarkClicked();
+                break;
+            case R.id.menu_item_append_playlist:
+                if (currentInfo != null) {
+                    disposables.add(PlaylistDialog.createCorrespondingDialog(
+                            getContext(),
+                            getPlayQueue()
+                                    .getStreams()
+                                    .stream()
+                                    .map(StreamEntity::new)
+                                    .collect(Collectors.toList()),
+                            dialog -> dialog.show(getFM(), TAG)
+                    ));
+                }
                 break;
             default:
                 return super.onOptionsItemSelected(item);
@@ -262,6 +277,12 @@ public class PlaylistFragment extends BaseListInfoFragment<StreamInfoItem, Playl
 
         PicassoHelper.cancelTag(PICASSO_PLAYLIST_TAG);
         animate(headerBinding.uploaderLayout, false, 200);
+    }
+
+    @Override
+    public void handleNextItems(final ListExtractor.InfoItemsPage result) {
+        super.handleNextItems(result);
+        setStreamCountAndOverallDuration(result.getItems(), !result.hasNextPage());
     }
 
     @Override

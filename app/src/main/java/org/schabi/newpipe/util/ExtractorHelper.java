@@ -53,7 +53,6 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import org.schabi.newpipe.extractor.suggestion.SuggestionExtractor;
 import org.schabi.newpipe.util.external_communication.TextLinkifier;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -183,37 +182,6 @@ public final class ExtractorHelper {
         checkServiceId(serviceId);
         return Single.fromCallable(() ->
                 PlaylistInfo.getMoreItems(NewPipe.getService(serviceId), url, nextPage));
-    }
-
-    public static Single<PlaylistInfo> getAllPlaylistItems(final int serviceId,
-                                                                             final String url) {
-        checkServiceId(serviceId);
-        return Single.fromCallable(() -> {
-                    final var result = PlaylistInfo.getInfo(NewPipe.getService(serviceId), url);
-
-                    final var items = new ArrayList<>(result.getRelatedItems());
-                    final var errors = new ArrayList<>(result.getErrors());
-
-                    while (result.hasNextPage()) {
-                        final var nextPage =
-                                PlaylistInfo.getMoreItems(
-                                        NewPipe.getService(serviceId),
-                                        url,
-                                        result.getNextPage());
-
-                        items.addAll(nextPage.getItems());
-                        errors.addAll(nextPage.getErrors());
-
-                        result.setNextPage(nextPage.getNextPage());
-                    }
-
-                    result.setNextPage(null);
-                    result.setRelatedItems(items);
-                    result.getErrors().clear();
-                    result.addAllErrors(errors);
-
-                    return result;
-                });
     }
 
     public static Single<KioskInfo> getKioskInfo(final int serviceId, final String url,
